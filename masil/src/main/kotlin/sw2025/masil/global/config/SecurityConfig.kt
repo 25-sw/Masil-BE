@@ -51,10 +51,12 @@ class SecurityConfig(
                         "/debate/done-list",
                         "/debate/done",
                         "/user/check/**",
-                        "/error"
+                        "/error",
+                        "/store-owner/sign-up",
+                        "store-owner/login"
                     ).permitAll()
                     .requestMatchers(
-                        "/debate/create"
+                        "/store-owner/test"
                     ).authenticated()
                     .anyRequest().authenticated()
             }
