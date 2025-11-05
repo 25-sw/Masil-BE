@@ -12,3 +12,9 @@ spring:
       hibernate:
         format_sql: true
     show-sql: true
+auth:
+  jwt:
+    secretKey: ${JWT_SECRET_KEY}
+    accessExp: ${JWT_ACCESS_EXP}
+    header: ${JWT_HEADER}
+    prefix: ${JWT_PREFIX}

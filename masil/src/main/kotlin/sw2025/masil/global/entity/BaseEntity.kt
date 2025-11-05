@@ -6,8 +6,8 @@ import jakarta.persistence.MappedSuperclass
 import java.util.*
 
 @MappedSuperclass
-abstract class BaseEntity (
+abstract class BaseEntity(
     @Id
     @Column(name = "id", columnDefinition = "BINARY(16)")
-    val id: UUID = UUID.randomUUID(),
+    val id: UUID = UUID.randomUUID()
 )
