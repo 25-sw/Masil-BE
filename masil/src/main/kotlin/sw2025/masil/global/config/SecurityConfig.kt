@@ -55,10 +55,7 @@ class SecurityConfig(
                         "/store-owner/sign-up",
                         "store-owner/login"
                     ).permitAll()
-                    .requestMatchers(
-                        "/store-owner/test"
-                    ).authenticated()
-                    .anyRequest().authenticated()
+                    .anyRequest().permitAll()
             }
 
         http
