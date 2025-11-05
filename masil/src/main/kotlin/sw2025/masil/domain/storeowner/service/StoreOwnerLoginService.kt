@@ -22,6 +22,6 @@ class StoreOwnerLoginService(
             throw PasswordMismatchException
         }
 
-        return TokenResponse(storeOwner.accountId)
+        return jwtTokenProvider.generateToken(storeOwner.accountId)
     }
 }
