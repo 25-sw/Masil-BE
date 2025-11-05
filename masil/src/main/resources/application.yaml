@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    driver-class-name: ${DB_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:masil}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:1234}
+  jpa:
+    hibernate:
+      dialect: ${DB_DIALECT:org.hibernate.dialect.MySQLDialect}
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
