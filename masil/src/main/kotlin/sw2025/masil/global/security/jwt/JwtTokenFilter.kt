@@ -9,20 +9,13 @@ import org.springframework.web.filter.OncePerRequestFilter
 class JwtTokenFilter(
     private val jwtTokenProvider: JwtTokenProvider
 ) : OncePerRequestFilter() {
-    private val excludedPaths = listOf("/user/signup")
+    private val excludedPaths = listOf("/store-owner/sign-up", "/store-owner/login")
 
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
         filterChain: FilterChain
     ) {
-        val path = request.requestURI
-
-        if (excludedPaths.any { path.endsWith(it) }) {
-            filterChain.doFilter(request, response)
-            return
-        }
-
         val token = jwtTokenProvider.resolveToken(request)
 
         token?.run {
