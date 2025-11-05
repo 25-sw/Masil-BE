@@ -6,12 +6,12 @@ import jakarta.persistence.FetchType
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import sw2025.masil.domain.storeowner.entity.StoreOwner
+import sw2025.masil.domain.storeowner.persistence.entity.StoreOwner
 import sw2025.masil.global.entity.BaseEntity
 
 @Entity
 @Table(name = "menu")
-class Menu (
+class Menu(
 
     @Column(name = "name", nullable = false, columnDefinition = "VARCHAR(50)")
     var name: String,
@@ -24,5 +24,5 @@ class Menu (
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_owner_id", nullable = false, columnDefinition = "BINARY(16)")
-    val storeOwner: StoreOwner,
+    val storeOwner: StoreOwner
 ) : BaseEntity()
