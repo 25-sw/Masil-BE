@@ -1,0 +1,14 @@
+services:
+  mysql:
+    image: 'mysql:latest'
+    environment:
+      - 'MYSQL_DATABASE=masil'
+      - 'MYSQL_PASSWORD=1234'
+      - 'MYSQL_ROOT_PASSWORD=1234'
+      - 'MYSQL_USER=user'
+    ports:
+      - '3306:3306'
+  redis:
+    image: 'redis:latest'
+    ports:
+      - '6379:6379'
