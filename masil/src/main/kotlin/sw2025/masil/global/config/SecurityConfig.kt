@@ -12,6 +12,8 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsUtils
 import sw2025.masil.global.error.GlobalExceptionFilter
+import sw2025.masil.global.security.jwt.JwtTokenFilter
+import sw2025.masil.global.security.jwt.JwtTokenProvider
 
 @Configuration
 @EnableWebSecurity
