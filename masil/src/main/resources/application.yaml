@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: ${DB_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:masil}
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:3306/${DB_NAME:masil}
     username: ${DB_USER:root}
-    password: ${DB_PASSWORD:1234}
+    password: ${DB_PASSWORD:12345678}
   jpa:
     hibernate:
       dialect: ${DB_DIALECT:org.hibernate.dialect.MySQLDialect}
@@ -12,9 +12,18 @@ spring:
       hibernate:
         format_sql: true
     show-sql: true
+  cloud:
+    openfeign:
+      okhttp:
+        enabled: true
 auth:
   jwt:
     secretKey: ${JWT_SECRET_KEY}
     accessExp: ${JWT_ACCESS_EXP}
     header: ${JWT_HEADER}
     prefix: ${JWT_PREFIX}
+sbiz:
+  cookies: >-
+    _harry_fid=hh-1981165521; _harry_lang=ko-KR; _harry_ref=https%3A//www.google.com/;
+    _harry_url=https%3A//www.sbiz24.kr/%23/combinePbancList%3Fcombine%3Dcombine;
+    NetFunnel_ID=; WMONID=jv7I6EvJQgf; xloc=1512X982; XTVID=A251105174905867490
