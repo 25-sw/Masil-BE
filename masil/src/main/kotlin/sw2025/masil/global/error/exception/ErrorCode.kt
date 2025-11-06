@@ -11,5 +11,7 @@ enum class ErrorCode(
 
     STOREOWNER_NOT_FOUND(404, "존재하지 않는 유저입니다."),
 
-    DUPLICATION_ACCOUNT_ID(409, "이미 존재하는 아이디입니다.")
+    DUPLICATION_ACCOUNT_ID(409, "이미 존재하는 아이디입니다."),
+
+    S3_UPLOAD_FAILED(500, "이미지 업로드에 실패했습니다.")
 }
