@@ -1,4 +1,4 @@
-package sw2025.masil.domain.poster.entity
+package sw2025.masil.domain.poster.persistence.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
