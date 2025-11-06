@@ -33,6 +33,7 @@ class CreatePosterService(
 ) {
     private val mapper: ObjectMapper = jacksonObjectMapper()
     private val log = LoggerFactory.getLogger(CreatePosterService::class.java)
+    private val CREATIVE_MODE: Boolean = false  // set true to let the model interpret more freely
 
     fun execute(request: CreatePosterRequest): CreatePosterResponse {
         log.info(
@@ -52,7 +53,7 @@ class CreatePosterService(
                                     포스터 목적: ${request.category}
                                     대상 고객: ${request.targetAudience}
                                     위 정보를 바탕으로 포스터 홍보 문구를 만들어줘.
-                                    첫 줄은 제목(짧고 강렬하게), 다음 줄은 부제(한 줄). 그 외 설명은 넣지 마.
+                                    제목과 부제라는 단어는 포함하지 말고, 첫 줄은 짧고 강렬한 문장, 두 번째 줄은 그 문장을 보완하는 한 줄만 반환해. 다른 설명은 넣지 마.
                                 """.trimIndent()
                             )
                         )
@@ -83,7 +84,10 @@ class CreatePosterService(
             val bodyLines: List<String> = generateBodyCopy(request, title, subtitle)
 
             log.info("[Poster] imagen generate start")
-            val imagePrompt = buildImagenPrompt(request, title, subtitle, bodyLines)
+            val imagePrompt = if (CREATIVE_MODE)
+                buildImagenPromptCreative(request, title, subtitle, bodyLines)
+            else
+                buildImagenPrompt(request, title, subtitle, bodyLines)
             log.debug("[Poster] imagen prompt=\n{}", imagePrompt)
             val googleCreds = GoogleCredentials.getApplicationDefault()
                 .createScoped(listOf("https://www.googleapis.com/auth/cloud-platform"))
@@ -102,7 +106,7 @@ class CreatePosterService(
                     parameters = ImagenPromptRequest.Parameters(
                         sampleCount = 1,
                         aspectRatio = "3:4",
-                        negativePrompt = "watermark, caption watermark, brand logo overlays, UI, hands, fingers, people, body parts, artifacts, lowres, blurry, jpeg artifacts, frame, border, heavy grain, distortion",
+                        negativePrompt = if (CREATIVE_MODE) "" else buildNegativePrompt(request.serviceName),
                         safetySetting = "block_some"
                     )
                 )
@@ -207,43 +211,194 @@ class CreatePosterService(
                 ?.map { it.trim() }
                 ?.filter { it.isNotBlank() }
                 ?.take(2)
-                ?.ifEmpty { listOf("지금만 한정 판매", "신선한 딸기 가득") }
-                ?: listOf("지금만 한정 판매", "신선한 딸기 가득")
+                ?.ifEmpty { listOf("지금만 한정 판매", "${request.serviceName} 오늘의 추천") }
+                ?: listOf("지금만 한정 판매", "${request.serviceName} 오늘의 추천")
         } catch (_: Exception) {
-            listOf("지금만 한정 판매", "신선한 딸기 가득")
+            listOf("지금만 한정 판매", "${request.serviceName} 오늘의 추천")
         }
     }
 
-    private fun buildImagenPrompt(request: CreatePosterRequest, title: String, subtitle: String, bodyLines: List<String>): String {
-        val theme = request.serviceName.ifBlank { "Signature item" }
-        val store = request.storeName.ifBlank { "The store" }
-        val category = request.category.ifBlank { "Cafe / Dessert" }
-        val target = request.targetAudience.ifBlank { "young adults" }
+    private fun buildNegativePrompt(serviceName: String): String {
+        val base = mutableListOf(
+            "watermark",
+            "caption watermark",
+            "brand logo overlays",
+            "UI",
+            "hands",
+            "fingers",
+            "people",
+            "body parts",
+            "artifacts",
+            "lowres",
+            "blurry",
+            "jpeg artifacts",
+            "frame",
+            "border",
+            "heavy grain",
+            "distortion",
+            // generic text suppression
+            "text",
+            "caption",
+            "subtitle",
+            "korean letters",
+            "english letters"
+        )
+
+        val s = serviceName.lowercase()
+        fun addAll(vararg items: String) { base.addAll(items) }
+
+        // If it's a fruit beverage (주스/에이드/스무디), block dairy & coffee cues
+        if (s.contains("주스") || s.contains("에이드") || s.contains("스무디") || s.contains("juice") || s.contains("ade") || s.contains("smoothie")) {
+            addAll(
+                "coffee",
+                "espresso",
+                "latte",
+                "cappuccino",
+                "americano",
+                "macchiato",
+                "mocha",
+                "mug",
+                "paper cup",
+                "milk froth",
+                "milk foam",
+                "latte art",
+                "crema",
+                "coffee beans",
+                "portafilter",
+                "steam wand",
+                "ceramic mug",
+                "takeout cup",
+                "brown coffee color"
+            )
+            // and avoid dairy look if not explicitly hot/milk-based
+            if (!s.contains("라떼") && !s.contains("latte") && !s.contains("milk") && !s.contains("hot") && !s.contains("따뜻")) {
+                addAll(
+                    "milk",
+                    "milky",
+                    "cream",
+                    "whipped cream",
+                    "ice cream",
+                    "yogurt"
+                )
+            }
+        }
+
+        // Explicit ingredient grounding: if serviceName mentions watermelon, forbid other fruits that often creep in
+        if (s.contains("수박") || s.contains("watermelon")) {
+            addAll(
+                "strawberry",
+                "strawberries",
+                "berry",
+                "blueberry",
+                "raspberry",
+                "cherry",
+                "peach",
+                "mango",
+                "banana",
+                "kiwi",
+                "grape",
+                "orange",
+                "lemon slice",
+                "lime slice",
+                "coffee"
+            )
+        }
+
+        return base.joinToString(", ")
+    }
+
+
+    private fun buildImagenPrompt(
+        request: CreatePosterRequest,
+        title: String,
+        subtitle: String,
+        bodyLines: List<String>
+    ): String {
+        val s = request.serviceName.lowercase()
+        val allowSteam = listOf("hot", "핫", "따뜻", "데운", "뜨거운").any { s.contains(it) }
+        val steamPolicy = if (allowSteam)
+            "Steam/vapor is allowed only if the product name explicitly indicates a hot item."
+        else
+            "Do NOT render steam or vapor; treat as cold/room-temperature."
+
+        // 요청 JSON을 그대로 넣어 모델을 고정(ground)시킴
+        val groundedJson = """
+    {
+      "storeName": "${request.storeName}",
+      "serviceName": "${request.serviceName}",
+      "category": "${request.category}",
+      "targetAudience": "${request.targetAudience}"
+    }
+    """.trimIndent()
+
+        val smallCopy = bodyLines
+            .filter { it.isNotBlank() }
+            .take(2)
+            .joinToString(separator = "\n- ", prefix = "- ", postfix = "")
+
         return """
-Create a photorealistic commercial product PHOTO for an Instagram feed portrait (vertical). Language context: Korean.
+You are generating ONE photorealistic commercial PRODUCT PHOTO for Instagram (portrait/vertical).
+Use ONLY the information below as ground truth. Do not infer other flavors or ingredients.
 
-Brand/store: $store
-Category: $category
-Product/theme: $theme (iced strawberry latte; no visible steam; fresh strawberries)
-Target audience: $target
+=== Grounding Data (JSON) ===
+$groundedJson
+=== End ===
 
-Visual direction:
-- Style: premium, modern, clean; real product photography look (not illustration). Soft studio lighting, subtle bokeh, crisp details.
-- Composition: portrait layout with strong central hero (glass cup of strawberry latte). Clean background; enough breathing room around the subject.
-- Palette: fresh strawberry reds, milk white, light cool neutrals; avoid warm vapor/steam.
-- Props: realistic strawberries (whole & sliced), minimal marble or pastel surface. Avoid hands/people.
+Optional small-copy suggestions (for layout spacing only, DO NOT render as text):
+$smallCopy
 
-Typography to render INSIDE the image (Korean):
-- Render a SMALL caption block with these exact lines (do NOT translate or rewrite):
-  • ${bodyLines.getOrNull(0) ?: "지금만 한정 판매"}
-  • ${bodyLines.getOrNull(1) ?: "신선한 딸기 가득"}
-- Place this caption at the lower-left area inside a subtle semi-transparent rounded rectangle. Keep high legibility.
-- Use modest size (caption-level), do not create a large headline. Avoid extra text other than the two lines above.
+Rules:
+- Depict exactly the product described by "serviceName".
+- If ingredients are implied by words in "serviceName", use ONLY those literal ingredients.
+- Do NOT add or substitute any other fruits/coffee/toppings not present in the name.
+- If ambiguous, prefer a minimal neutral presentation appropriate to the item.
+- $steamPolicy
+- No text/captions/UI/logos/watermarks/frames/borders. (Typography will be added later.)
 
-Hard constraints:
-- Do NOT add logos, watermarks, UI, frames, borders, or any extra text besides the two caption lines above.
-- No people or hands. No heavy grain or distortions.
-Output: a single high-resolution portrait image suitable for overlaying an external main title/subtitle later.
+Style & Composition:
+- Premium, modern, clean studio product photography (not illustration).
+- Soft studio lighting, subtle bokeh, crisp details.
+- Strong central hero subject; keep clean background and breathing room for later typography.
+- Background/props must logically belong to the product in "serviceName"; avoid unrelated items.
+
+Output: one high-resolution portrait image (no embedded text).
+""".trimIndent()
+    }
+
+    private fun buildImagenPromptCreative(
+        request: CreatePosterRequest,
+        title: String,
+        subtitle: String,
+        bodyLines: List<String>
+    ): String {
+        val smallCopy = bodyLines
+            .filter { it.isNotBlank() }
+            .take(2)
+            .joinToString(separator = "\n- ", prefix = "- ", postfix = "")
+
+        // A lighter, interpretation-friendly prompt: minimal constraints, no grounding JSON, no explicit fruit/prop lists.
+        return """
+You are an art director creating ONE compelling vertical product shot suitable for a poster.
+Interpret the brief creatively and choose plausible styling/props that fit naturally.
+
+Brief:
+- Store: ${request.storeName}
+- Offering: ${request.serviceName}
+- Category: ${request.category}
+- Target audience: ${request.targetAudience}
+
+Creative guidance:
+- You may infer a reasonable scene, mood, and supporting props that match the offering and category.
+- Aim for premium, modern studio aesthetics; photorealistic result (not illustration).
+- Strong central hero; keep some breathing room for later typography.
+- Keep color palette and props coherent with the offering and season implied by the name.
+
+Optional small-copy hints (for spacing only, DO NOT render as text):
+$smallCopy
+
+Hard limits:
+- Do not render UI, logos, watermarks, frames, or borders.
+- Avoid embedding any readable text in the image (typography is added later).
 """.trimIndent()
     }
 
@@ -331,7 +486,9 @@ Output: a single high-resolution portrait image suitable for overlaying an exter
             val h = cropped.height
             val margin = (w * 0.06).toInt()
             val titleSize = (w * 0.095).toInt()
-            val subSize = (w * 0.05).toInt()
+            val subSize = (w * 0.045).toInt() // slightly smaller subtitle font
+            // Shorten the title if too long
+            val shortTitle = if (title.length > 20) title.take(20) + "…" else title
             val titleFont = chooseFont(
                 listOf(
                     "Noto Sans CJK KR",
@@ -356,7 +513,7 @@ Output: a single high-resolution portrait image suitable for overlaying an exter
             )
             g.font = titleFont
             val fmTitle = g.fontMetrics
-            val titleWidth = fmTitle.stringWidth(title)
+            val titleWidth = fmTitle.stringWidth(shortTitle)
             val titleHeight = fmTitle.height
             g.font = subFont
             val fmSub = g.fontMetrics
@@ -373,11 +530,12 @@ Output: a single high-resolution portrait image suitable for overlaying an exter
             g.font = titleFont
             val titleX = blockX + (margin * 0.3).toInt()
             val titleY = blockY + fmTitle.ascent + (margin * 0.2).toInt()
-            drawTextWithShadow(g, title, titleX, titleY, java.awt.Color.WHITE)
+            drawTextWithShadow(g, shortTitle, titleX, titleY, java.awt.Color.WHITE)
             if (subtitle.isNotBlank()) {
                 g.font = subFont
                 val subX = titleX
-                val subY = titleY + (titleHeight * 1.1).toInt()
+                // Place subtitle at the bottom margin, aligned left with title
+                val subY = h - margin - fmSub.descent
                 drawTextWithShadow(g, subtitle, subX, subY, java.awt.Color.WHITE)
             }
         } finally {
