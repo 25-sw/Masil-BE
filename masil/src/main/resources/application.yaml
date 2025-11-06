@@ -27,3 +27,22 @@ sbiz:
     _harry_fid=hh-1981165521; _harry_lang=ko-KR; _harry_ref=https%3A//www.google.com/;
     _harry_url=https%3A//www.sbiz24.kr/%23/combinePbancList%3Fcombine%3Dcombine;
     NetFunnel_ID=; WMONID=jv7I6EvJQgf; xloc=1512X982; XTVID=A251105174905867490
+
+cloud:
+  aws:
+    s3:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+      region: ${AWS_STATIC}
+      bucket: ${AWS_S3_BUCKET}
+    stack:
+      auto: false
+
+ai:
+  gemini:
+    api-key: ${GEMINI_API_KEY}
+    model: gemini-2.5-flash
+  imagen:
+    accessToken: ${IMAGEN_ACCESS_TOKEN}
+    project-id: ${IMAGEN_PROJECT_ID}
+    model: imagen-3.0
